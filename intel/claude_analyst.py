@@ -73,7 +73,7 @@ def _run_cli(cfg: Config, system_prompt: str, user_prompt: str) -> str:
             text=True,
             env=env,
             cwd=cwd,
-            timeout=300,
+            timeout=900,
         )
     finally:
         try:

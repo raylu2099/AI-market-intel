@@ -43,10 +43,13 @@ class Article:
         return cls(**d)
 
 
-def save_articles(path: Path, articles: Iterable[Article]) -> int:
+def save_articles(path: Path, articles: Iterable[Article], mode: str = "w") -> int:
+    """Persist articles to JSONL. mode='w' (default) replaces the file;
+    mode='a' appends. Replace is correct for slot runs that treat each day's
+    archive as a snapshot — re-running a slot should not create duplicates."""
     path.parent.mkdir(parents=True, exist_ok=True)
     count = 0
-    with path.open("a", encoding="utf-8") as f:
+    with path.open(mode, encoding="utf-8") as f:
         for a in articles:
             if not a.fetched_at:
                 a.fetched_at = now_utc().isoformat(timespec="seconds")
