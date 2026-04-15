@@ -1,0 +1,4 @@
+# Pinned minimal dependencies. Python 3.10+ required.
+yfinance>=0.2.40
+trafilatura>=1.12.0
+requests>=2.31.0
