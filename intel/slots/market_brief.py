@@ -103,13 +103,23 @@ def run_market_brief(cfg: Config, spec: MarketBriefSpec) -> SlotResult:
 
     parts.append(f"📰 <b>要闻 ({len(articles)} 篇真实来源)</b>\n{chinese_headlines}")
 
-    full = "\n\n".join(parts)
+    # P4: Split into core (first screen) + detail (scrollable)
+    # Core = header + watchlist + macro; Detail = radar + technicals + events + news
+    core_parts = [p for p in parts[:4]]  # header, watchlist, macro at most
+    detail_parts = [p for p in parts[4:]]  # radar, technicals, regime, events, news
+
+    messages = []
+    if core_parts:
+        messages.extend(split_message("\n\n".join(core_parts)))
+    if detail_parts:
+        messages.extend(split_message("\n\n".join(detail_parts)))
+
     return SlotResult(
         slot=spec.slot_name,
         category=CATEGORY,
         date_str=date_str,
         articles=articles,
-        messages=split_message(full),
+        messages=messages,
     )
 
 

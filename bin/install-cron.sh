@@ -74,6 +74,20 @@ install_standard() {
 
 chmod +x "$RUNNER"
 
+# A4: Timezone validation warning
+SYSTEM_TZ=$(readlink -f /etc/localtime 2>/dev/null | sed 's|.*/zoneinfo/||' || cat /etc/timezone 2>/dev/null || echo "unknown")
+MARKET_TZ=$(grep "^MARKET_TZ=" "$PROJECT_DIR/.env" 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "US/Pacific")
+echo "System TZ: $SYSTEM_TZ"
+echo "MARKET_TZ: $MARKET_TZ"
+if [ "$SYSTEM_TZ" != "$MARKET_TZ" ] && [ "$SYSTEM_TZ" != "unknown" ]; then
+    echo ""
+    echo "⚠️  WARNING: System timezone ($SYSTEM_TZ) differs from MARKET_TZ ($MARKET_TZ)."
+    echo "   Cron fires based on system TZ. If this is intentional (e.g. NAS in PT"
+    echo "   but you set MARKET_TZ for label display), this is fine."
+    echo "   If not, adjust cron times in the block below to match your market."
+    echo ""
+fi
+
 if [ -f /etc/synoinfo.conf ] || [ -f /etc/crontab ] && [ "$(id -u)" = "0" ]; then
     install_synology
 else

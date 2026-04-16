@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from ..claude_analyst import analyze, load_prompt
 from ..config import Config
+from ..events import upcoming_earnings
 from ..fetch import enrich_with_bodies
 from ..macro_regime import compute_regime, format_regime_for_analyst
 from ..prices import MACRO_TICKERS, RADAR_TICKERS, fetch_quotes
@@ -172,8 +173,14 @@ def run(cfg: Config) -> SlotResult:
     analysis_md = analyze(cfg, system_prompt, user_prompt)
     save_analysis(cfg, CATEGORY, date_str, analysis_md)
 
+    # P9: Tomorrow's earnings alert for watchlist
+    earnings_alert = upcoming_earnings(cfg, horizon_days=2)
+    earnings_section = ""
+    if earnings_alert and "无" not in earnings_alert:
+        earnings_section = f"\n\n⚠️ <b>明日财报预警</b>\n{earnings_alert}"
+
     header = f"🏁 <b>US Close</b> — {now_pt():%a %m/%d} 16:00 ET"
-    full = f"{header}\n\n{analysis_md}"
+    full = f"{header}\n\n{analysis_md}{earnings_section}"
     messages = split_message(full)
 
     return SlotResult(
