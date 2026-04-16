@@ -36,6 +36,18 @@ def _load_env_file(path: Path) -> None:
 _load_env_file(PROJECT_ROOT / ".env")
 
 
+def _load_named_config(name: str | None) -> None:
+    """Load a named config file (configs/<name>.env) for multi-instance."""
+    if not name:
+        return
+    p = PROJECT_ROOT / "configs" / f"{name}.env"
+    if p.exists():
+        for ln in p.read_text().splitlines():
+            if "=" in ln and not ln.strip().startswith("#"):
+                k, _, v = ln.partition("=")
+                os.environ[k.strip()] = v.strip().strip('"').strip("'")
+
+
 def _env(key: str, default: str | None = None, required: bool = False) -> str:
     val = os.environ.get(key, default)
     if required and not val:
@@ -109,7 +121,8 @@ class Config:
         return self.data_dir / "pushes" / date_str
 
 
-def load_config() -> Config:
+def load_config(config_name: str | None = None) -> Config:
+    _load_named_config(config_name)
     data_dir = Path(_env("MARKET_INTEL_DATA_DIR", str(PROJECT_ROOT / "data")))
     logs_dir = Path(_env("MARKET_INTEL_LOGS_DIR", str(PROJECT_ROOT / "logs")))
     prompts_dir = PROJECT_ROOT / "prompts"

@@ -52,7 +52,11 @@ def _call(cfg: Config, query: SearchQuery) -> dict:
     )
     try:
         with urllib.request.urlopen(req, timeout=60) as resp:
-            return json.loads(resp.read().decode())
+            data = json.loads(resp.read().decode())
+        cost = data.get("usage", {}).get("cost", {}).get("total_cost", 0)
+        if cost:
+            print(f"[cost] search: ${cost:.5f}", file=sys.stderr)
+        return data
     except Exception as e:
         print(f"[search] perplexity call failed: {e}", file=sys.stderr)
         return {}

@@ -34,7 +34,10 @@ def split_message(text: str, limit: int = SAFE_CHARS) -> list[str]:
     return chunks
 
 
-def send_message(cfg: Config, text: str, parse_mode: str = "HTML") -> bool:
+def send_message(
+    cfg: Config, text: str, parse_mode: str = "HTML", retries: int = 3
+) -> bool:
+    """Send with exponential backoff retry on 429 / transient errors."""
     data = urllib.parse.urlencode(
         {
             "chat_id": cfg.telegram_chat_id,
@@ -43,17 +46,32 @@ def send_message(cfg: Config, text: str, parse_mode: str = "HTML") -> bool:
             "disable_web_page_preview": "true",
         }
     ).encode()
-    req = urllib.request.Request(
-        f"https://api.telegram.org/bot{cfg.telegram_bot_token}/sendMessage",
-        data=data,
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            return bool(json.loads(resp.read().decode()).get("ok"))
-    except Exception as e:
-        print(f"[telegram] send failed: {e}", file=sys.stderr)
-        return False
+    url = f"https://api.telegram.org/bot{cfg.telegram_bot_token}/sendMessage"
+
+    for attempt in range(retries):
+        req = urllib.request.Request(url, data=data, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                return bool(json.loads(resp.read().decode()).get("ok"))
+        except urllib.error.HTTPError as e:
+            if e.code == 429 and attempt < retries - 1:
+                wait = 2 ** (attempt + 1)
+                print(
+                    f"[telegram] 429 rate-limited, retry in {wait}s", file=sys.stderr
+                )
+                import time
+                time.sleep(wait)
+                continue
+            print(f"[telegram] HTTP {e.code}: {e.reason}", file=sys.stderr)
+            return False
+        except Exception as e:
+            if attempt < retries - 1:
+                import time
+                time.sleep(1)
+                continue
+            print(f"[telegram] send failed after {retries} tries: {e}", file=sys.stderr)
+            return False
+    return False
 
 
 def send_long(cfg: Config, text: str, parse_mode: str = "HTML") -> tuple[int, int]:
