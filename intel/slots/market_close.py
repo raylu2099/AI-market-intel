@@ -8,6 +8,7 @@ from __future__ import annotations
 from ..claude_analyst import analyze, load_prompt
 from ..config import Config
 from ..earnings import fetch_all_earnings, format_earnings_for_analyst
+from ..sentiment import fetch_sentiment, format_sentiment_for_analyst
 from ..events import upcoming_earnings
 from ..fetch import enrich_with_bodies
 from ..macro_regime import compute_regime, format_regime_for_analyst
@@ -86,6 +87,7 @@ def _build_user_prompt(
     macro_quotes=None,
     regime=None,
     earnings_profiles=None,
+    sentiment=None,
 ) -> str:
     watchlist_str = ", ".join(f"{t} ({n})" for t, n in cfg.watchlist)
     parts = [
@@ -109,6 +111,10 @@ def _build_user_prompt(
 
     if earnings_profiles:
         parts.append(format_earnings_for_analyst(earnings_profiles))
+        parts.append("")
+
+    if sentiment:
+        parts.append(format_sentiment_for_analyst(sentiment))
         parts.append("")
 
     if macro_quotes:
@@ -171,11 +177,13 @@ def run(cfg: Config) -> SlotResult:
     earnings_profiles = fetch_all_earnings(cfg)
     macro_quotes = fetch_quotes(MACRO_TICKERS + RADAR_TICKERS)
     regime = compute_regime()
+    sentiment = fetch_sentiment(list(cfg.watchlist))
 
     system_prompt = load_prompt(cfg, "market_close_analyst")
     user_prompt = _build_user_prompt(
         cfg, articles, history, past_analyses,
         tech_snaps, val_snaps, macro_quotes, regime, earnings_profiles,
+        sentiment,
     )
     analysis_md = analyze(cfg, system_prompt, user_prompt)
     save_analysis(cfg, CATEGORY, date_str, analysis_md)

@@ -20,6 +20,7 @@ from ..prices import (
 from ..search import SearchQuery
 from ..summary import search_and_translate
 from ..macro_regime import compute_regime, format_regime_panel
+from ..sentiment import fetch_sentiment, format_sentiment_panel
 from ..technicals import compute_technicals, format_technicals_panel
 from ..telegram import split_message
 from ..timeutil import now_pt, today_str
@@ -97,6 +98,8 @@ def run_market_brief(cfg: Config, spec: MarketBriefSpec) -> SlotResult:
         parts.append(format_technicals_panel(tech_snaps))
         regime = compute_regime()
         parts.append(format_regime_panel(regime))
+        sentiment = fetch_sentiment(cfg.watchlist)
+        parts.append(format_sentiment_panel(sentiment))
 
     if spec.include_events:
         parts.append(format_event_calendar(cfg))

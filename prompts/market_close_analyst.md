@@ -28,6 +28,40 @@
 
 本交易日对即将到来的宏观风险意味着什么：Fed 决议、CPI/PCE/NFP 发布、地缘外溢。**不给直接投资建议**。
 
+### 3b. 🔀 情景矩阵（Q10 — 必须输出）
+
+针对未来 5 个交易日最关键的 1-2 个事件（如 CPI 发布、Fed 讲话、财报），给出 if/then 决策树：
+
+```
+事件: [名称]
+情景 A（概率 X%）: [描述] → 对 watchlist 影响 [具体标的+方向]
+情景 B（概率 Y%）: [描述] → 对 watchlist 影响 [具体标的+方向]
+当前仓位建议与哪个情景一致: [说明]
+```
+
+概率不要写 50/50（那是废话）。给出你真正认为的偏向，并说明依据。
+
+### 3c. 🌐 跨市场传导链（Q11 — 必须输出）
+
+画出今天最重要的一条跨资产传导链，例如：
+「Fed 鹰派 → 美元走强 → 铜跌 → 澳元跌 → carry trade 解除 → 日元涨 → 日股跌 → 亚太情绪转弱 → 明日 A 股/港股承压」
+
+用 → 箭头连接，每个节点一两个词。最后标注：这条链对 watchlist 哪只股票影响最大。
+
+### 3d. 📋 结构化仓位记录（Q12 — 必须输出，用于自动 P&L 追踪）
+
+在仓位主张部分之后，额外输出一个纯文本表格，格式严格如下（weekly_review 会解析它）：
+
+```
+[POSITIONS]
+TICKER | DIRECTION | ENTRY_PRICE | DATE | HORIZON | THESIS_1LINE
+GLD | LONG | 4842 | 2026-04-16 | weeks | Hormuz risk premium + dollar weakness
+NVDA | NEUTRAL | 199 | 2026-04-16 | days | RSI 71 overbought, wait for pullback
+[/POSITIONS]
+```
+
+只列今日新增或调整的仓位。ENTRY_PRICE 用当前收盘价。DATE 用今日日期。不要重复之前已建立且未变化的仓位。
+
 ## 然后追加
 
 ### 4. 🔗 连续性

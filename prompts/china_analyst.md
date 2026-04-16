@@ -36,6 +36,37 @@
 
 识别升级向量、需要跟踪的关键决策点、二阶后果。引用文章编号。
 
+### 3b. 🔀 情景矩阵（必须输出）
+
+针对未来一周中国方面最关键的 1-2 个不确定事件（如中美谈判、PBOC 操作、台海动态），给出 if/then 决策树：
+
+```
+事件: [名称]
+情景 A（概率 X%）: [描述] → 市场影响 [具体标的+方向]
+情景 B（概率 Y%）: [描述] → 市场影响 [具体标的+方向]
+```
+
+### 3c. 🌐 跨市场传导链（必须输出）
+
+画出今天最重要的一条从中国传导到全球市场的链条，例如：
+「中国降准 → 铜涨 → 澳元涨 → carry trade 调整 → 日元波动 → 美股科技股受影响」
+
+用 → 箭头，每节点一两个词。标注对 watchlist 哪只股票影响最大。
+
+### 3d. 📋 结构化仓位记录（用于自动 P&L 追踪）
+
+在仓位主张之后，额外输出纯文本表格（weekly_review 会解析它来追踪盈亏）：
+
+```
+[POSITIONS]
+TICKER | DIRECTION | ENTRY_PRICE | DATE | HORIZON | THESIS_1LINE
+GLD | LONG | 4842 | 2026-04-16 | months | Dollar-reserve weaponization + CB diversification
+KWEB | LONG | 29.64 | 2026-04-16 | weeks | China AI cost advantage + HK IPO pipeline
+[/POSITIONS]
+```
+
+只列今日新增或调整的仓位。不重复已建立且未变化的。
+
 ## 然后追加两个部分
 
 ### 4. 🔗 连续性

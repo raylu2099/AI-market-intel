@@ -16,6 +16,7 @@ from datetime import timedelta
 from ..claude_analyst import analyze
 from ..config import Config
 from ..cost_tracker import format_weekly_cost_summary
+from ..pnl_tracker import load_all_positions, compute_pnl, format_pnl_review
 from ..storage import load_recent_analyses, save_analysis
 from ..telegram import split_message
 from ..timeutil import now_pt, today_str
@@ -86,11 +87,20 @@ def run(cfg: Config) -> SlotResult:
     analysis_md = analyze(cfg, SYSTEM_PROMPT, user_prompt)
     save_analysis(cfg, CATEGORY, date_str, analysis_md)
 
+    # Q12: P&L tracking
+    positions = load_all_positions(cfg, days=7)
+    positions = compute_pnl(positions)
+    pnl_section = format_pnl_review(positions)
+
     # P6: Append weekly cost summary
     cost_summary = format_weekly_cost_summary(cfg)
 
     header = f"📋 <b>周回顾</b> — {now_pt():%a %m/%d}"
-    full = f"{header}\n\n{analysis_md}\n\n━━━━━━━━━━\n{cost_summary}"
+    full = (
+        f"{header}\n\n{analysis_md}\n\n"
+        f"━━━━━━━━━━\n{pnl_section}\n\n"
+        f"━━━━━━━━━━\n{cost_summary}"
+    )
     messages = split_message(full)
 
     return SlotResult(
