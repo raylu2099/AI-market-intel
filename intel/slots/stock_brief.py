@@ -7,6 +7,7 @@ headlines per-ticker. One Telegram message per ticker.
 from __future__ import annotations
 
 from ..config import Config
+from ..earnings import EarningsProfile, fetch_all_earnings
 from ..prices import Quote, fetch_quotes
 from ..search import SearchQuery
 from ..storage import dedupe_articles
@@ -61,6 +62,7 @@ def _run_stock_slot(
     pt = now_pt()
     quotes = {q.ticker: q for q in fetch_quotes(cfg.watchlist)}
     vals = {v.ticker: v for v in fetch_valuations(cfg.watchlist)}
+    earns = {e.ticker: e for e in fetch_all_earnings(cfg)}
 
     all_articles = []
     messages = []
@@ -92,7 +94,16 @@ def _run_stock_slot(
             if val_line:
                 val_line = f"💎 {val_line}\n"
 
-        body = f"{header}\n{price_line}\n{val_line}\n📰 <b>要闻 ({len(articles)} 篇)</b>\n{chinese_text}"
+        # Earnings one-liner
+        e = earns.get(ticker)
+        earn_line = ""
+        if e and e.quarters:
+            eq = e.quarters[0]
+            surprise = "✅" if eq.surprise == "BEAT" else ("❌" if eq.surprise == "MISS" else "")
+            yoy = f" YoY {eq.revenue_yoy_pct:+.0f}%" if eq.revenue_yoy_pct is not None else ""
+            earn_line = f"📈 {eq.fiscal_period}: EPS ${eq.eps_actual:.2f} {surprise}{yoy}\n"
+
+        body = f"{header}\n{price_line}\n{val_line}{earn_line}\n📰 <b>要闻 ({len(articles)} 篇)</b>\n{chinese_text}"
         messages.extend(split_message(body))
 
     return SlotResult(

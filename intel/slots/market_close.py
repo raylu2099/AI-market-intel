@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from ..claude_analyst import analyze, load_prompt
 from ..config import Config
+from ..earnings import fetch_all_earnings, format_earnings_for_analyst
 from ..events import upcoming_earnings
 from ..fetch import enrich_with_bodies
 from ..macro_regime import compute_regime, format_regime_for_analyst
@@ -84,6 +85,7 @@ def _build_user_prompt(
     val_snaps=None,
     macro_quotes=None,
     regime=None,
+    earnings_profiles=None,
 ) -> str:
     watchlist_str = ", ".join(f"{t} ({n})" for t, n in cfg.watchlist)
     parts = [
@@ -103,6 +105,10 @@ def _build_user_prompt(
 
     if val_snaps:
         parts.append(format_valuations_for_analyst(val_snaps))
+        parts.append("")
+
+    if earnings_profiles:
+        parts.append(format_earnings_for_analyst(earnings_profiles))
         parts.append("")
 
     if macro_quotes:
@@ -162,13 +168,14 @@ def run(cfg: Config) -> SlotResult:
     # Quantitative data
     tech_snaps = compute_technicals(list(cfg.watchlist))
     val_snaps = fetch_valuations(list(cfg.watchlist))
+    earnings_profiles = fetch_all_earnings(cfg)
     macro_quotes = fetch_quotes(MACRO_TICKERS + RADAR_TICKERS)
     regime = compute_regime()
 
     system_prompt = load_prompt(cfg, "market_close_analyst")
     user_prompt = _build_user_prompt(
         cfg, articles, history, past_analyses,
-        tech_snaps, val_snaps, macro_quotes, regime,
+        tech_snaps, val_snaps, macro_quotes, regime, earnings_profiles,
     )
     analysis_md = analyze(cfg, system_prompt, user_prompt)
     save_analysis(cfg, CATEGORY, date_str, analysis_md)
