@@ -10,6 +10,7 @@ import urllib.request
 from datetime import date, timedelta
 
 from .config import Config
+from .cost_tracker import record_cost
 from .search import PPLX_ENDPOINT
 
 
@@ -73,6 +74,7 @@ def upcoming_macro_events(cfg: Config) -> str:
             data = json.loads(resp.read().decode())
         cost = data.get("usage", {}).get("cost", {}).get("total_cost", 0)
         if cost:
+            record_cost("perplexity_events", cost)
             print(f"[cost] macro_events: ${cost:.5f}", file=sys.stderr)
         return (
             data.get("choices", [{}])[0]

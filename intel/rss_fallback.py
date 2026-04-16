@@ -4,6 +4,7 @@ Pure stdlib — no API key needed.
 """
 from __future__ import annotations
 
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from html import unescape
@@ -57,7 +58,3 @@ def fetch_google_news(query: str, max_results: int = 15) -> list[Article]:
         pass
 
     return articles
-
-
-# Needed for urllib.parse in the URL formatting
-import urllib.parse

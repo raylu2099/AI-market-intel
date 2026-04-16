@@ -17,6 +17,7 @@ import sys
 import urllib.request
 
 from .config import Config
+from .cost_tracker import record_cost
 from .search import PPLX_ENDPOINT, SearchQuery, search_articles
 from .storage import Article, dedupe_articles
 
@@ -68,6 +69,7 @@ def translate_headlines(
             data = json.loads(resp.read().decode())
         cost = data.get("usage", {}).get("cost", {}).get("total_cost", 0)
         if cost:
+            record_cost("perplexity_translate", cost)
             print(f"[cost] translate_headlines: ${cost:.5f}", file=sys.stderr)
         return (
             data.get("choices", [{}])[0]

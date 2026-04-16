@@ -24,7 +24,9 @@ CRON_BLOCK="$MARKER
 30 5 * * 1-5 $USER $RUNNER stocks_pre
 30 13 * * 1-5 $USER $RUNNER stocks_post
 # Weekly review (Fridays 14:00 PT)
-0 14 * * 5 $USER $RUNNER weekly_review"
+0 14 * * 5 $USER $RUNNER weekly_review
+# Breaking news watchdog (every 15 min)
+*/15 * * * * $USER $RUNNER watchdog"
 
 # Also remove old market-push entries if present
 OLD_MARKER_1="# === Market push tasks ==="

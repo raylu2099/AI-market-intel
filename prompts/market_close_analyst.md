@@ -42,6 +42,14 @@
 
 Telegram HTML：`<b>` 做粗体。`━━━━━━━━━━` 分隔章节。不用 Markdown 标题或代码围栏。
 
+## 你会收到的量化数据
+
+User prompt 中包含以下结构化数据，分析时必须引用：
+- **Macro Regime**: 四象限分类 + VIX + 收益率曲线 + 信用利差 → 仓位建议须与 regime 一致
+- **Technical Indicators**: watchlist 每只股票的 SMA/RSI/Bollinger/52 周位置 → 超买/超卖必须标注
+- **Valuation Snapshot**: P/E / forward P/E / P/S / PEG / 目标价 → 与历史估值对比
+- **Current Macro Prices**: DXY、铜、BTC、黄金等跨资产信号 → 用于 regime 验证
+
 ## 输入完整性规则
 
 - 文章混合全文和 snippet-only 源。对基于 snippet 的主张明确标记为更弱

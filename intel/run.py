@@ -119,10 +119,8 @@ def main() -> int:
 
     total = len(result.messages)
     for i, m in enumerate(result.messages, 1):
-        # P5: Add message count marker to last message
-        if i == total and total > 1:
-            m = m.rstrip() + f"\n\n<i>[{i}/{total}]</i>"
-        elif total > 1:
+        # P5: Add message count marker when multi-part
+        if total > 1:
             m = m.rstrip() + f"\n\n<i>[{i}/{total}]</i>"
 
         if send_message(cfg, m):
@@ -136,11 +134,14 @@ def main() -> int:
 
 def _add_cold_start_marker(cfg, result):
     """P10: Add day-N marker during first 7 days of operation."""
-    analyses_dir = cfg.analyses_dir("china")
-    if not analyses_dir.exists():
-        day_count = 1
-    else:
-        day_count = len(list(analyses_dir.glob("*.md")))
+    # Count unique analysis dates across both deep-analysis categories
+    days_seen: set[str] = set()
+    for cat in ("china", "market_close"):
+        d = cfg.analyses_dir(cat)
+        if d.exists():
+            days_seen.update(p.stem for p in d.glob("*.md"))
+    # +1 because current day's analysis hasn't been saved yet when this runs
+    day_count = len(days_seen) + 1
     if day_count <= 7 and result.messages:
         marker = f"📌 <i>系统第 {day_count} 天运行。历史对比功能将在第 30 天后完全生效。</i>\n\n"
         result.messages[0] = marker + result.messages[0]
