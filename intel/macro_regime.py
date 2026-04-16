@@ -35,7 +35,8 @@ class RegimeSnapshot:
     inflation_momentum: float  # 20d return of DXY (or ^TNX)
     vix: float | None = None
     vix_signal: str = ""     # "低波" / "正常" / "恐慌"
-    yield_curve_2s10s: float | None = None  # 10Y - 2Y spread
+    yield_curve_2s10s: float | None = None  # 10Y - 3M spread
+    credit_spread: float | None = None  # HYG/LQD ratio momentum
     detail: str = ""
     err: str = ""
 
@@ -43,7 +44,7 @@ class RegimeSnapshot:
 def compute_regime() -> RegimeSnapshot:
     snap = RegimeSnapshot(regime="UNKNOWN", growth_momentum=0, inflation_momentum=0)
     try:
-        tickers = ["SPY", "DX-Y.NYB", "^VIX", "^TNX", "^IRX"]
+        tickers = ["SPY", "DX-Y.NYB", "^VIX", "^TNX", "^IRX", "HYG", "LQD"]
         hist = yf.download(
             " ".join(tickers), period="2mo", interval="1d",
             progress=False, auto_adjust=False, group_by="ticker",
@@ -105,6 +106,19 @@ def compute_regime() -> RegimeSnapshot:
         except Exception:
             pass
 
+        # Credit spread proxy: HYG/LQD ratio momentum
+        # Falling ratio = widening spreads = risk-off signal
+        try:
+            hyg = hist["HYG"]["Close"].dropna()
+            lqd = hist["LQD"]["Close"].dropna()
+            if len(hyg) > 20 and len(lqd) > 20:
+                ratio = hyg / lqd
+                ratio_now = float(ratio.iloc[-1])
+                ratio_20d = float(ratio.iloc[-21])
+                snap.credit_spread = (ratio_now / ratio_20d - 1) * 100
+        except Exception:
+            pass
+
     except Exception as e:
         snap.err = str(e)[:80]
         print(f"[regime] error: {e}", file=sys.stderr)
@@ -126,6 +140,9 @@ def format_regime_panel(snap: RegimeSnapshot) -> str:
     if snap.yield_curve_2s10s is not None:
         inv = " ⚠️ 倒挂" if snap.yield_curve_2s10s < 0 else ""
         lines.append(f"  收益率曲线 (10Y-3M): {snap.yield_curve_2s10s:+.2f}%{inv}")
+    if snap.credit_spread is not None:
+        stress = " ⚠️ 信用压力" if snap.credit_spread < -0.5 else ""
+        lines.append(f"  信用利差 (HYG/LQD 20d): {snap.credit_spread:+.2f}%{stress}")
     return "\n".join(lines)
 
 
@@ -144,6 +161,9 @@ def format_regime_for_analyst(snap: RegimeSnapshot) -> str:
     if snap.yield_curve_2s10s is not None:
         inv = " (INVERTED)" if snap.yield_curve_2s10s < 0 else ""
         lines.append(f"- Yield curve (10Y-3M spread): {snap.yield_curve_2s10s:+.2f}%{inv}")
+    if snap.credit_spread is not None:
+        stress = "(credit stress)" if snap.credit_spread < -0.5 else "(stable)"
+        lines.append(f"- Credit spread proxy (HYG/LQD 20d): {snap.credit_spread:+.2f}% {stress}")
     lines.append(
         f"- POSITION CHECK: Your position theses MUST be consistent with "
         f"the {snap.regime} regime. If proposing a contrarian bet against "
