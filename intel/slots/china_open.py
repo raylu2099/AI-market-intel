@@ -16,8 +16,10 @@ from __future__ import annotations
 from ..claude_analyst import analyze, load_prompt
 from ..config import Config
 from ..fetch import enrich_with_bodies
+from ..prices import MACRO_TICKERS, RADAR_TICKERS, fetch_quotes
 from ..search import SearchQuery, search_articles
 from ..storage import dedupe_articles, load_recent_analyses, save_analysis
+from ..technicals import compute_technicals, format_technicals_for_analyst
 from ..telegram import split_message
 from ..timeutil import BEIJING, now_bj, today_str
 from .base import (
@@ -92,6 +94,8 @@ def _build_user_prompt(
     today_articles: list,
     history_articles: list,
     past_analyses: list[tuple[str, str]],
+    tech_snaps=None,
+    macro_quotes=None,
 ) -> str:
     parts = [
         f"# Today's date (Beijing): {now_bj().strftime('%Y-%m-%d %A')}",
@@ -117,11 +121,32 @@ def _build_user_prompt(
         parts.append("(no past analyses — this is day 1 of the system, "
                      "historical comparison must note 'data accumulating')")
         parts.append("")
+    # Quantitative data sections
+    if tech_snaps:
+        parts.append("# Technical Indicators (computed)")
+        parts.append("")
+        parts.append(format_technicals_for_analyst(tech_snaps))
+        parts.append("")
+
+    if macro_quotes:
+        parts.append("# Current Macro Prices")
+        parts.append("")
+        for q in macro_quotes:
+            if q.ok:
+                parts.append(f"- {q.name} ({q.ticker}): {q.last:.2f} ({q.pct:+.2f}%)")
+        parts.append("")
+
     parts.append("---")
     parts.append("")
     parts.append(
         "Produce the briefing now, following the system prompt's format "
-        "exactly. Use article IDs [A1]..[A{}] for citations.".format(len(today_articles))
+        "exactly. Use article IDs [A1]..[A{}] for citations. "
+        "CRITICAL: Use the technical indicators and macro data above to "
+        "validate your position theses — do NOT recommend going long on "
+        "an asset with RSI > 75 without acknowledging overbought risk, "
+        "and note SMA cross signals when relevant.".format(
+            len(today_articles)
+        )
     )
     return "\n".join(parts)
 
@@ -143,9 +168,16 @@ def run(cfg: Config) -> SlotResult:
     history = load_recent_articles(cfg, CATEGORY, cfg.history_window_days)
     past_analyses = load_recent_analyses(cfg, CATEGORY, cfg.history_window_days)
 
+    # 4b. Compute quantitative data for analyst
+    china_tickers = [("KWEB", "中概互联"), ("FXI", "中国大盘")] + list(cfg.watchlist)
+    tech_snaps = compute_technicals(china_tickers)
+    macro_quotes = fetch_quotes(MACRO_TICKERS + RADAR_TICKERS)
+
     # 5. Claude analysis
     system_prompt = load_prompt(cfg, "china_analyst")
-    user_prompt = _build_user_prompt(cfg, articles, history, past_analyses)
+    user_prompt = _build_user_prompt(
+        cfg, articles, history, past_analyses, tech_snaps, macro_quotes
+    )
     analysis_md = analyze(cfg, system_prompt, user_prompt)
 
     # 6. Save analysis

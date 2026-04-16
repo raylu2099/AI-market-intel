@@ -13,6 +13,7 @@ from ..storage import dedupe_articles
 from ..summary import search_and_translate
 from ..telegram import split_message
 from ..timeutil import now_pt, today_str
+from ..valuations import ValuationSnapshot, fetch_valuations
 from .base import SlotResult, archive_articles
 
 
@@ -59,6 +60,7 @@ def _run_stock_slot(
     date_str = today_str(cfg.market_tz)
     pt = now_pt()
     quotes = {q.ticker: q for q in fetch_quotes(cfg.watchlist)}
+    vals = {v.ticker: v for v in fetch_valuations(cfg.watchlist)}
 
     all_articles = []
     messages = []
@@ -79,7 +81,18 @@ def _run_stock_slot(
             f"📈 <b>{name} · {ticker}</b> — {header_label} "
             f"({pt:%a %m/%d})"
         )
-        body = f"{header}\n{price_line}\n\n📰 <b>要闻 ({len(articles)} 篇)</b>\n{chinese_text}"
+        # Valuation one-liner
+        v = vals.get(ticker)
+        val_line = ""
+        if v and v.ok:
+            pe = f"P/E {v.trailing_pe:.0f}" if v.trailing_pe else ""
+            fpe = f"fwd {v.forward_pe:.0f}" if v.forward_pe else ""
+            tgt = f"目标 ${v.target_mean:.0f}" if v.target_mean else ""
+            val_line = " | ".join(x for x in [pe, fpe, tgt] if x)
+            if val_line:
+                val_line = f"💎 {val_line}\n"
+
+        body = f"{header}\n{price_line}\n{val_line}\n📰 <b>要闻 ({len(articles)} 篇)</b>\n{chinese_text}"
         messages.extend(split_message(body))
 
     return SlotResult(

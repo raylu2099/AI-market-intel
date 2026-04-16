@@ -8,10 +8,14 @@ from __future__ import annotations
 from ..claude_analyst import analyze, load_prompt
 from ..config import Config
 from ..fetch import enrich_with_bodies
+from ..macro_regime import compute_regime, format_regime_for_analyst
+from ..prices import MACRO_TICKERS, RADAR_TICKERS, fetch_quotes
 from ..search import SearchQuery, search_articles
 from ..storage import dedupe_articles, load_recent_analyses, save_analysis
+from ..technicals import compute_technicals, format_technicals_for_analyst
 from ..telegram import split_message
 from ..timeutil import now_pt, today_str
+from ..valuations import fetch_valuations, format_valuations_for_analyst
 from .base import (
     SlotResult,
     archive_articles,
@@ -75,12 +79,39 @@ def _build_user_prompt(
     today_articles: list,
     history_articles: list,
     past_analyses: list[tuple[str, str]],
+    tech_snaps=None,
+    val_snaps=None,
+    macro_quotes=None,
+    regime=None,
 ) -> str:
     watchlist_str = ", ".join(f"{t} ({n})" for t, n in cfg.watchlist)
     parts = [
         f"# Today's date (US Pacific): {now_pt().strftime('%Y-%m-%d %A')}",
         f"# Watchlist: {watchlist_str}",
         "",
+    ]
+
+    # Quantitative data sections
+    if regime:
+        parts.append(format_regime_for_analyst(regime))
+        parts.append("")
+
+    if tech_snaps:
+        parts.append(format_technicals_for_analyst(tech_snaps))
+        parts.append("")
+
+    if val_snaps:
+        parts.append(format_valuations_for_analyst(val_snaps))
+        parts.append("")
+
+    if macro_quotes:
+        parts.append("# Current Macro Prices")
+        for q in macro_quotes:
+            if q.ok:
+                parts.append(f"- {q.name} ({q.ticker}): {q.last:.2f} ({q.pct:+.2f}%)")
+        parts.append("")
+
+    parts.extend([
         f"# Today's articles ({len(today_articles)} items)",
         "",
         format_article_block(today_articles, include_body=True),
@@ -91,7 +122,7 @@ def _build_user_prompt(
         "",
         f"# Your past analyses (last {cfg.history_window_days} days)",
         "",
-    ]
+    ])
     if past_analyses:
         for date_str, content in past_analyses[-15:]:
             parts.append(f"## Analysis from {date_str}")
@@ -106,7 +137,12 @@ def _build_user_prompt(
     parts.append("")
     parts.append(
         "Produce the close briefing now, following the system prompt format. "
-        "Cite with [A1]..[A{}].".format(len(today_articles))
+        "Cite with [A1]..[A{}]. CRITICAL: anchor your position theses to the "
+        "quantitative data provided (technicals, valuations, regime). Do NOT "
+        "recommend a long on a stock with RSI > 75 without flagging overbought "
+        "risk. Validate positions against the current macro regime.".format(
+            len(today_articles)
+        )
     )
     return "\n".join(parts)
 
@@ -122,8 +158,17 @@ def run(cfg: Config) -> SlotResult:
     history = load_recent_articles(cfg, CATEGORY, cfg.history_window_days)
     past_analyses = load_recent_analyses(cfg, CATEGORY, cfg.history_window_days)
 
+    # Quantitative data
+    tech_snaps = compute_technicals(list(cfg.watchlist))
+    val_snaps = fetch_valuations(list(cfg.watchlist))
+    macro_quotes = fetch_quotes(MACRO_TICKERS + RADAR_TICKERS)
+    regime = compute_regime()
+
     system_prompt = load_prompt(cfg, "market_close_analyst")
-    user_prompt = _build_user_prompt(cfg, articles, history, past_analyses)
+    user_prompt = _build_user_prompt(
+        cfg, articles, history, past_analyses,
+        tech_snaps, val_snaps, macro_quotes, regime,
+    )
     analysis_md = analyze(cfg, system_prompt, user_prompt)
     save_analysis(cfg, CATEGORY, date_str, analysis_md)
 

@@ -19,6 +19,8 @@ from ..prices import (
 )
 from ..search import SearchQuery
 from ..summary import search_and_translate
+from ..macro_regime import compute_regime, format_regime_panel
+from ..technicals import compute_technicals, format_technicals_panel
 from ..telegram import split_message
 from ..timeutil import now_pt, today_str
 from .base import SlotResult, archive_articles
@@ -46,6 +48,7 @@ class MarketBriefSpec:
     include_macro: bool = True
     include_radar: bool = False
     include_events: bool = False
+    include_technicals: bool = False
 
 
 def _queries(spec: MarketBriefSpec) -> list[SearchQuery]:
@@ -89,6 +92,12 @@ def run_market_brief(cfg: Config, spec: MarketBriefSpec) -> SlotResult:
         radar_quotes = fetch_quotes(RADAR_TICKERS)
         parts.append("🔭 <b>市场雷达</b>\n" + format_watchlist(radar_quotes))
 
+    if spec.include_technicals:
+        tech_snaps = compute_technicals(cfg.watchlist)
+        parts.append(format_technicals_panel(tech_snaps))
+        regime = compute_regime()
+        parts.append(format_regime_panel(regime))
+
     if spec.include_events:
         parts.append(format_event_calendar(cfg))
 
@@ -115,6 +124,7 @@ PREMARKET_SPEC = MarketBriefSpec(
     ],
     include_radar=True,
     include_events=True,
+    include_technicals=True,
 )
 
 OPEN_SPEC = MarketBriefSpec(
